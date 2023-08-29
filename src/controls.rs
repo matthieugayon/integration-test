@@ -11,7 +11,7 @@ use iced_winit::core::{Alignment, Color, Element, Length};
 use iced_winit::runtime::{Command, Program};
 use lazy_static::lazy_static;
 
-pub struct App {
+pub struct Controls {
     background_color: Color,
     speed_mode: SpeedMode,
     speed_range: SpeedRange,
@@ -24,9 +24,9 @@ pub enum Message {
     SetSpeedMode(SpeedMode)
 }
 
-impl App {
-    pub fn new() -> App {
-        App {
+impl Controls {
+    pub fn new() -> Controls {
+        Controls {
             background_color: Color::BLACK,
             speed_mode: SpeedMode::Quantized,
             speed_range: SpeedRange::default(),
@@ -39,7 +39,7 @@ impl App {
     }
 }
 
-impl Program for App {
+impl Program for Controls {
     type Renderer = Renderer<Theme>;
     type Message = Message;
 

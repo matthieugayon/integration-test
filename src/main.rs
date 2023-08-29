@@ -1,10 +1,10 @@
-mod app;
+mod controls;
 mod theme;
 mod h_slider;
 mod color_utils;
 pub mod speed;
 
-use app::App;
+use controls::Controls;
 use theme::Theme;
 
 use iced_wgpu::graphics::Viewport;
@@ -104,7 +104,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut resized = false;
 
     // Initialize scene and GUI controls
-    let app = App::new();
+    let controls = Controls::new();
 
     // Initialize iced
     let mut debug = Debug::new();
@@ -116,7 +116,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     let mut state = program::State::new(
-        app,
+        controls,
         viewport.logical_size(),
         &mut renderer,
         &mut debug,
