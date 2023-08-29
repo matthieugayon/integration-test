@@ -1,6 +1,4 @@
 /target
-/deploy/bins
-*.vst
 .DS_Store
 .cargo
 .idea

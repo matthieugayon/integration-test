@@ -1,3 +1,4 @@
+use iced::application;
 use iced_core::{Color, Size, Font, Background, BorderRadius};
 use crate::h_slider::style::{StyleSheet, Appearance};
 use crate::color_utils::{darken, lighten};
@@ -58,6 +59,36 @@ impl Default for Theme {
 }
 
 /**
+ * application
+ */
+
+#[derive(Debug, Clone, Copy)]
+pub enum Application {
+    Default
+}
+
+impl Default for Application {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
+impl application::StyleSheet for Theme {
+    type Style = Application;
+
+    fn appearance(&self, style: &Self::Style) -> application::Appearance {
+        let palette = self.palette();
+
+        match style {
+            Application::Default => application::Appearance {
+                background_color: palette.background,
+                text_color: darken(palette.text, 0.2)
+            }
+        }
+    }
+}
+
+/**
  * h_slider
  */
 
@@ -72,10 +103,10 @@ impl Default for HSliderStyleType {
     }
 }
 
-pub const DEFAULT_TEXT_MARKER_HEIGHT: f32 = 16.0;
+pub const DEFAULT_TEXT_MARKER_HEIGHT: f32 = 18.0;
 pub const DEFAULT_RAIL_HEIGHT: f32 = 8.0;
 pub const DEFAULT_HANDLE_SIZE: Size = Size::new(24., 14.);
-pub const RAIL_HANDLE_MARGIN: f32 = 2.;
+pub const RAIL_HANDLE_MARGIN: f32 = 3.;
 
 impl StyleSheet for Theme {
     type Style = HSliderStyleType;
@@ -86,13 +117,13 @@ impl StyleSheet for Theme {
         let appearance = Appearance {
             background_color: darken(palette.background, 0.3),
             rail_color: darken(palette.background, 0.1),
-            handle_color: lighten(palette.primary, 0.2),
-            mark_color_normal: darken(palette.background, 0.3),
-            mark_color_bold: darken(palette.background, 0.3),
+            handle_color: palette.primary,
+            mark_color_normal: palette.background,
+            mark_color_bold: lighten(palette.background, 0.2),
             mark_width: 2.0,
             text_mark_color: Color::WHITE,
             text_mark_font: Font::default(),
-            text_mark_size: 14.
+            text_mark_size: 12.
         };
 
         match style {
@@ -104,7 +135,7 @@ impl StyleSheet for Theme {
         let palette = self.palette();
 
         Appearance {
-            handle_color: palette.primary,
+            handle_color: lighten(palette.primary, 0.1),
             ..self.active(style)
         }
     }
@@ -153,29 +184,29 @@ impl Default for CheckboxStyle {
 impl checkbox::StyleSheet for Theme {
     type Style = CheckboxStyle;
 
-    fn hovered(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
+    fn hovered(&self, _style: &Self::Style, _is_checked: bool) -> checkbox::Appearance {
         let palette = self.palette();
 
         checkbox::Appearance {
             background: Background::Color(palette.background),
-            icon_color: lighten(palette.primary, 0.2),
-            border_radius: BorderRadius { ..Default::default() },
+            icon_color: lighten(palette.primary, 0.1),
+            border_radius: BorderRadius::from(0.),
             border_width: 2.,
             border_color: lighten(palette.background, 0.2),
             text_color: Some(palette.text),
         }
     }
 
-    fn active(&self, style: &Self::Style, is_checked: bool) -> checkbox::Appearance {
+    fn active(&self, _style: &Self::Style, _is_checked: bool) -> checkbox::Appearance {
         let palette = self.palette();
 
         checkbox::Appearance {
             background: Background::Color(palette.background),
             icon_color: palette.primary,
-            border_radius: BorderRadius { ..Default::default() },
+            border_radius: BorderRadius::from(0.),
             border_width: 2.,
             border_color: lighten(palette.background, 0.2),
-            text_color: Some(palette.text),
+            text_color: Some(darken(palette.text, 0.2)),
         }
     }
 }
