@@ -1,0 +1,27 @@
+[package]
+authors = ["matthieugayon <matthieu.gayon@gmail.com>"]
+edition = "2021"
+name = "integration-test"
+version = "0.0.1"
+
+[dependencies]
+
+iced = { version = "0.10", features = ["wgpu", "canvas", "advanced"] }
+iced_core = "0.10"
+iced_renderer = { version = "0.1", features = ["geometry", "wgpu"] }
+iced_widget = { version = "0.1.3", features = ["canvas"] }
+iced_winit = { version = "0.10.0", features = ["application"] }
+iced_wgpu = { version = "0.11.1", features = ["geometry"] }
+iced_graphics = { version = "0.9.0", features = ["geometry"] }
+iced_futures = "0.7.0"
+env_logger = "0.10"
+
+# utils
+arrayvec = { version = "0.7.2" }
+bytemuck = { version = "1.4", features = ["derive"] }
+colors-transform = "0.2.5"
+palette = "0.7.3"
+rand = "*"
+num-traits = "0.2"
+lazy_static = "1.4.0"
+hex = { git = "https://github.com/matthieugayon/hex-color-macros" }
