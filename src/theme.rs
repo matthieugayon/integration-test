@@ -59,36 +59,6 @@ impl Default for Theme {
 }
 
 /**
- * application
- */
-
-#[derive(Debug, Clone, Copy)]
-pub enum Application {
-    Default
-}
-
-impl Default for Application {
-    fn default() -> Self {
-        Self::Default
-    }
-}
-
-impl application::StyleSheet for Theme {
-    type Style = Application;
-
-    fn appearance(&self, style: &Self::Style) -> application::Appearance {
-        let palette = self.palette();
-
-        match style {
-            Application::Default => application::Appearance {
-                background_color: palette.background,
-                text_color: darken(palette.text, 0.2)
-            }
-        }
-    }
-}
-
-/**
  * h_slider
  */
 

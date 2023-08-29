@@ -1,188 +1,287 @@
+mod controls;
+mod theme;
 mod h_slider;
-pub mod theme;
+mod color_utils;
 pub mod speed;
-pub mod color_utils;
 
-use crate::h_slider::{HSlider, normal::Normal};
-use crate::theme::Theme;
-use crate::speed::{
-    MarkWeight, SpeedMode, SpeedValue, SpeedRange,
-    DEFAULT_QUANTIZED_SPEED_INDEX, QUANTIZED_SPEEDS
+use controls::Controls;
+use theme::Theme;
+
+use iced_wgpu::graphics::Viewport;
+use iced_wgpu::{wgpu, Backend, Renderer, Settings};
+use iced_winit::core::mouse;
+use iced_winit::core::renderer;
+use iced_winit::core::{Color, Size};
+use iced_winit::runtime::program;
+use iced_winit::runtime::Debug;
+use iced_winit::{conversion, futures, winit, Clipboard};
+
+use winit::{
+    event::{Event, ModifiersState, WindowEvent},
+    event_loop::{ControlFlow, EventLoop},
 };
 
-use iced::{Application, Element, Settings, Renderer};
-use iced_widget::{Row, Text, Checkbox, Column};
-use iced_winit::core::{Alignment, Length};
-use iced_winit::runtime::Command;
-use iced::executor;
-use lazy_static::lazy_static;
 
-pub fn main() -> iced::Result {
-    Controls::run(Settings {
-        antialiasing: true,
+pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
+    // Initialize winit
+    let event_loop = EventLoop::new();
+    let window = winit::window::Window::new(&event_loop)?;
+
+    let physical_size = window.inner_size();
+    let mut viewport = Viewport::with_physical_size(
+        Size::new(physical_size.width, physical_size.height),
+        window.scale_factor(),
+    );
+    let mut cursor_position = None;
+    let mut modifiers = ModifiersState::default();
+    let mut clipboard = Clipboard::connect(&window);
+
+    let default_backend = wgpu::Backends::PRIMARY;
+
+    let backend =
+        wgpu::util::backend_bits_from_env().unwrap_or(default_backend);
+
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: backend,
         ..Default::default()
-    })
-}
+    });
+    let surface = unsafe { instance.create_surface(&window) }?;
 
-pub struct Controls {
-    speed_mode: SpeedMode,
-    speed_range: SpeedRange,
-    speed: SpeedValue
-}
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    SetSpeed(SpeedValue),
-    SetSpeedMode(SpeedMode)
-}
-
-impl Controls {
-    pub fn new() -> Controls {
-        Controls {
-            speed_mode: SpeedMode::Quantized,
-            speed_range: SpeedRange::default(),
-            speed: SpeedValue::Quantized(DEFAULT_QUANTIZED_SPEED_INDEX),
-        }
-    }
-}
-
-impl Application for Controls {
-    type Message = Message;
-    type Flags = ();
-    type Executor = executor::Default;
-    type Theme = Theme;
-
-    fn new(_flags: Self::Flags) -> (Self, Command<Message>) {
-        (Self::new(), Command::none())
-    }
-
-    fn title(&self) -> String {
-        String::from("Integration test")
-    }
-
-    fn update(&mut self, message: Message) -> Command<Message> {
-        match message {
-            Message::SetSpeed(speed) => {
-                self.speed = speed;
-            },
-            Message::SetSpeedMode(mode) => {
-                self.speed_mode = mode;
-            }
-        }
-
-        Command::none()
-    }
-
-    fn view(&self) -> Element<Message, Renderer<Theme>> {
-        let range = self.speed_range;
-
-        let (speed_normal, display_value) = match self.speed {
-            SpeedValue::Quantized(index) => {
-                let quantized_speed = &QUANTIZED_SPEEDS[index];
-                let quantized_value = quantized_speed.numerator / quantized_speed.denominator;
-
-                (range.normal_param(quantized_value, 1.), quantized_speed.text.to_string())
-            },
-            SpeedValue::Unquantized(value) => {
-                (range.normal_param(value, 1.), format!("{:0>1.2}", value))
-            }
-        };
-
-        let get_message = move |normal, opt_index| {
-            match opt_index {
-                Some(index) => {
-                    Message::SetSpeed(SpeedValue::Quantized(index))
-                },
-                None => {
-                    Message::SetSpeed(SpeedValue::Unquantized(range.unmap_to_value(normal)))
-                },
-            }
-        };
-
-        let snappable_option = match self.speed_mode {
-            SpeedMode::Quantized => Some((QUANTIZED_SPEED_NORMALS.to_vec(), DEFAULT_QUANTIZED_SPEED_INDEX)),
-            SpeedMode::Unquantized => None,
-        };
-
-        let quantize_btn = Checkbox::new(
-            "Quantised",
-            self.speed_mode == SpeedMode::Quantized,
-            |val| Message::SetSpeedMode(if val { SpeedMode::Quantized } else { SpeedMode::Unquantized })
-        );
-
-        Column::new()
-            .push(
-                Row::new()
-                .spacing(16)
-                .push(quantize_btn)
-                .push(
-                    HSlider::new(
-                        speed_normal,
-                        move |normal, index| get_message(normal, index),
-                    )
-                    .snap_to_normals(snappable_option)
-                    .markers(Some(MARKERS.as_slice()))
-                    .height(Length::Fixed(40.))
-                    .width(Length::Fixed(500.))
-                )
-                .push(
-                    Text::new(display_value)
-                        .size(14)
-                        .width(Length::Fixed(30.))
-                        .horizontal_alignment(iced::alignment::Horizontal::Center)
-                )
-                .align_items(Alignment::Center)
-                .width(Length::Shrink)
-                .height(Length::Fill)
+    let (format, (device, queue)) =
+        futures::futures::executor::block_on(async {
+            let adapter = wgpu::util::initialize_adapter_from_env_or_default(
+                &instance,
+                backend,
+                Some(&surface),
             )
-                .height(Length::Fill)
-                .width(Length::Fill)
-                .align_items(Alignment::Center)
-                .into()
-    }
-}
+            .await
+            .expect("Create adapter");
 
-fn generate_speed_normals() -> Vec<f32> {
-    QUANTIZED_SPEEDS
-        .into_iter()
-        .map(|speed_value| {
-            SpeedRange::default().map_to_normal(
-                speed_value.numerator / speed_value.denominator
-            ).as_f32()
-        })
-        .collect()
-}
+            let adapter_features = adapter.features();
 
-fn generate_markers() -> Vec<(Normal, Option<String>, Option<MarkWeight>)> {
-    QUANTIZED_SPEEDS
-        .into_iter()
-        .map(|quantized_speed| {
+            let needed_limits = wgpu::Limits::default();
+
+            let capabilities = surface.get_capabilities(&adapter);
+
             (
-                SpeedRange::default().map_to_normal(
-                    quantized_speed.numerator / quantized_speed.denominator
-                ),
-                { if quantized_speed.text_mark.is_none() { None } else { Some(quantized_speed.text_mark.unwrap().to_string())} },
-                quantized_speed.mark_weight
+                capabilities
+                    .formats
+                    .iter()
+                    .copied()
+                    .find(wgpu::TextureFormat::is_srgb)
+                    .or_else(|| capabilities.formats.first().copied())
+                    .expect("Get preferred format"),
+                adapter
+                    .request_device(
+                        &wgpu::DeviceDescriptor {
+                            label: None,
+                            features: adapter_features
+                                & wgpu::Features::default(),
+                            limits: needed_limits,
+                        },
+                        None,
+                    )
+                    .await
+                    .expect("Request device"),
             )
-        })
-        .collect()
-}
+        });
 
-fn generate_tick_normals(numbers: Vec<f32>) -> Vec<Normal> {
-    numbers.into_iter()
-        .map(|value| {
-            // println!("value: {}", value);
-            // Normal::from_clipped(value)
-            Normal::new(value)
-        })
-        .collect()
-}
+    surface.configure(
+        &device,
+        &wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format,
+            width: physical_size.width,
+            height: physical_size.height,
+            present_mode: wgpu::PresentMode::AutoVsync,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
+        },
+    );
 
-lazy_static! {
-    #[derive(Debug)]
-    pub static ref QUANTIZED_SPEED_NORMALS: Vec<f32> = generate_speed_normals();
-    #[derive(Debug)]
-    pub static ref TICK_NORMALS: Vec<Normal> = generate_tick_normals(QUANTIZED_SPEED_NORMALS.to_vec());
-    #[derive(Debug)]
-    pub static ref MARKERS: Vec<(Normal, Option<String>, Option<MarkWeight>)> = generate_markers();
+    let mut resized = false;
+
+    // Initialize scene and GUI controls
+    let controls = Controls::new();
+
+    // Initialize iced
+    let mut debug = Debug::new();
+    let mut renderer = Renderer::new(Backend::new(
+        &device,
+        &queue,
+        Settings::default(),
+        format,
+    ));
+
+    let mut state = program::State::new(
+        controls,
+        viewport.logical_size(),
+        &mut renderer,
+        &mut debug,
+    );
+
+    // Run event loop
+    event_loop.run(move |event, _, control_flow| {
+        // You should change this if you want to render continuosly
+        *control_flow = ControlFlow::Wait;
+
+        match event {
+            Event::WindowEvent { event, .. } => {
+                match event {
+                    WindowEvent::CursorMoved { position, .. } => {
+                        cursor_position = Some(position);
+                    }
+                    WindowEvent::ModifiersChanged(new_modifiers) => {
+                        modifiers = new_modifiers;
+                    }
+                    WindowEvent::Resized(_) => {
+                        resized = true;
+                    }
+                    WindowEvent::CloseRequested => {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                    _ => {}
+                }
+
+                // Map window event to iced event
+                if let Some(event) = iced_winit::conversion::window_event(
+                    &event,
+                    window.scale_factor(),
+                    modifiers,
+                ) {
+                    state.queue_event(event);
+                }
+            }
+            Event::MainEventsCleared => {
+                // If there are events pending
+                if !state.is_queue_empty() {
+                    // We update iced
+                    let _ = state.update(
+                        viewport.logical_size(),
+                        cursor_position
+                            .map(|p| {
+                                conversion::cursor_position(
+                                    p,
+                                    viewport.scale_factor(),
+                                )
+                            })
+                            .map(mouse::Cursor::Available)
+                            .unwrap_or(mouse::Cursor::Unavailable),
+                        &mut renderer,
+                        &Theme::Dark,
+                        &renderer::Style {
+                            text_color: Color::WHITE,
+                        },
+                        &mut clipboard,
+                        &mut debug,
+                    );
+
+                    // and request a redraw
+                    window.request_redraw();
+                }
+            }
+            Event::RedrawRequested(_) => {
+                if resized {
+                    let size = window.inner_size();
+
+                    viewport = Viewport::with_physical_size(
+                        Size::new(size.width, size.height),
+                        window.scale_factor(),
+                    );
+
+                    surface.configure(
+                        &device,
+                        &wgpu::SurfaceConfiguration {
+                            format,
+                            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                            width: size.width,
+                            height: size.height,
+                            present_mode: wgpu::PresentMode::AutoVsync,
+                            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+                            view_formats: vec![],
+                        },
+                    );
+
+                    resized = false;
+                }
+
+                match surface.get_current_texture() {
+                    Ok(frame) => {
+                        let mut encoder = device.create_command_encoder(
+                            &wgpu::CommandEncoderDescriptor { label: None },
+                        );
+
+                        let program = state.program();
+
+                        let view = frame.texture.create_view(
+                            &wgpu::TextureViewDescriptor::default(),
+                        );
+
+                        // We clear the frame
+                        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                            label: None,
+                            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                view: &view,
+                                resolve_target: None,
+                                ops: wgpu::Operations {
+                                    load: wgpu::LoadOp::Clear({
+                                        let [r, g, b, a] = program.background_color().into_linear();
+
+                                        wgpu::Color {
+                                            r: r as f64,
+                                            g: g as f64,
+                                            b: b as f64,
+                                            a: a as f64,
+                                        }
+                                    }),
+                                    store: true,
+                                },
+                            })],
+                            depth_stencil_attachment: None,
+                        });
+
+                        // And then iced on top
+                        renderer.with_primitives(|backend, primitive| {
+                            backend.present(
+                                &device,
+                                &queue,
+                                &mut encoder,
+                                None,
+                                &view,
+                                primitive,
+                                &viewport,
+                                &debug.overlay(),
+                            );
+                        });
+
+                        // Then we submit the work
+                        queue.submit(Some(encoder.finish()));
+                        frame.present();
+
+                        // Update the mouse cursor
+                        window.set_cursor_icon(
+                            iced_winit::conversion::mouse_interaction(
+                                state.mouse_interaction(),
+                            ),
+                        );
+                    }
+                    Err(error) => match error {
+                        wgpu::SurfaceError::OutOfMemory => {
+                            panic!(
+                                "Swapchain error: {error}. \
+                                Rendering cannot continue."
+                            )
+                        }
+                        _ => {
+                            // Try rendering again next frame.
+                            window.request_redraw();
+                        }
+                    },
+                }
+            }
+            _ => {}
+        }
+    })
 }
