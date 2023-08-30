@@ -213,7 +213,7 @@ where
 
 #[derive(Debug, Clone)]
 pub struct State {
-    is_dragging: Option<DragSource>,
+    is_dragging: bool,
     prev_drag_x: f32,
     continuous_normal: f32,
     last_snapped_normal: Option<f32>,
@@ -221,16 +221,16 @@ pub struct State {
     last_click: Option<mouse::Click>,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum DragSource {
-    Handle,
-    Rail,
-}
+// #[derive(Debug, Clone, Copy)]
+// enum DragSource {
+//     Handle,
+//     Rail,
+// }
 
 impl State {
     pub fn new(normal_param: NormalParam) -> Self {
         Self {
-            is_dragging: None,
+            is_dragging: false,
             prev_drag_x: 0.0,
             continuous_normal: normal_param.value.as_f32(),
             last_snapped_normal: None,
@@ -281,48 +281,33 @@ where
         messages: &mut Shell<'_, Message>,
         _: &Rectangle,
     ) -> event::Status {
-        let mut state = tree.state.downcast_mut::<State>();
+        let state = tree.state.downcast_mut::<State>();
 
         match event {
             Event::Mouse(mouse_event) => match mouse_event {
                 mouse::Event::CursorMoved { .. } => match state.is_dragging {
-                    Some(src) => {
+                    true => {
                         if let Some(cursor_position) = cursor.position() {
-                            match src {
-                                DragSource::Handle => {
-                                    let bounds_width = layout.bounds().width;
+                            let bounds_width = layout.bounds().width;
 
-                                    if bounds_width > 0.0 {
-                                        let normal_delta = (cursor_position.x - state.prev_drag_x)
-                                            / bounds_width
-                                            * -self.scalar;
+                            if bounds_width > 0.0 {
+                                let normal_delta = (cursor_position.x - state.prev_drag_x)
+                                    / bounds_width
+                                    * -self.scalar;
 
-                                        state.prev_drag_x = cursor_position.x;
+                                state.prev_drag_x = cursor_position.x;
 
-                                        self.move_virtual_slider(
-                                            state,
-                                            messages,
-                                            SliderMove::Relative(normal_delta),
-                                        );
+                                self.move_virtual_slider(
+                                    state,
+                                    messages,
+                                    SliderMove::Relative(normal_delta),
+                                );
 
-                                        return event::Status::Captured;
-                                    }
-                                }
-                                DragSource::Rail => {
-                                    let bounds_width = layout.bounds().width;
-
-                                    if bounds_width > 0.0 {
-                                        let normal_delta = (cursor_position.x - state.prev_drag_x)
-                                            / bounds_width
-                                            * -self.scalar;
-
-                                        state.prev_drag_x = cursor_position.x;
-                                    }
-                                }
+                                return event::Status::Captured;
                             }
                         }
                     }
-                    None => {}
+                    false => {}
                 },
                 mouse::Event::WheelScrolled { delta } => {
                     if self.wheel_scalar == 0.0 {
@@ -375,11 +360,11 @@ where
 
                         match click.kind() {
                             mouse::click::Kind::Single => {
-                                state.is_dragging = Some(DragSource::Handle);
+                                state.is_dragging = true;
                                 state.prev_drag_x = cursor_position.x;
                             }
                             _ => {
-                                state.is_dragging = None;
+                                state.is_dragging = false;
                                 self.move_virtual_slider(state, messages, SliderMove::Default);
                             }
                         }
@@ -399,7 +384,7 @@ where
                     }
                 }
                 mouse::Event::ButtonReleased(mouse::Button::Left) => {
-                    state.is_dragging = None;
+                    state.is_dragging = false;
                     state.continuous_normal = self.normal_param.value.as_f32();
 
                     return event::Status::Captured;
@@ -432,7 +417,7 @@ where
 
     fn draw(
         &self,
-        tree: &Tree,
+        _tree: &Tree,
         renderer: &mut Renderer<Theme>,
         theme: &Theme,
         _style: &renderer::Style,
@@ -440,7 +425,6 @@ where
         cursor: mouse::Cursor,
         _viewport: &Rectangle,
     ) {
-        let state = tree.state.downcast_ref::<State>();
         let bounds = layout.bounds();
         let size = bounds.size();
         let is_mouse_over = cursor.position_over(bounds).is_some();

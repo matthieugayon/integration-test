@@ -104,16 +104,16 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut debug = Debug::new();
 
     // This is the WGPU renderer
-    let renderer =
+    let wgpu_renderer =
         iced_wgpu::Renderer::new(Backend::new(&device, &queue, Settings::default(), format));
 
     // We wrap the renderer in a type that implements the iced renderer trait
-    let mut rd = iced_renderer::Renderer::Wgpu(renderer);
+    let mut renderer = iced_renderer::Renderer::Wgpu(wgpu_renderer);
 
     let mut state = program::State::new(
         controls,
         viewport.logical_size(),
-        &mut rd, // good type of renderer now
+        &mut renderer, // good type of renderer now
         &mut debug,
     );
 
@@ -157,7 +157,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .map(|p| conversion::cursor_position(p, viewport.scale_factor()))
                             .map(mouse::Cursor::Available)
                             .unwrap_or(mouse::Cursor::Unavailable),
-                        &mut rd,
+                        &mut renderer,
                         &Theme::Dark,
                         &renderer::Style {
                             text_color: Color::WHITE,
@@ -231,7 +231,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                             depth_stencil_attachment: None,
                         });
 
-                        if let iced_renderer::Renderer::Wgpu(ref mut inner_renderer) = rd {
+                        if let iced_renderer::Renderer::Wgpu(ref mut inner_renderer) = renderer {
                             // And then iced on top
                             inner_renderer.with_primitives(|backend, primitive| {
                                 backend.present(
