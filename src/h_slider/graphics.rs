@@ -119,21 +119,6 @@ fn get_frame_rail_bounds (
     }
 }
 
-pub fn get_rail_bounds (
-    bounds: Rectangle,
-    handle_size: Size,
-    text_mark_height: f32,
-    rail_height: f32
-) -> Rectangle {
-    let frame_rail_bounds = get_frame_rail_bounds(bounds.size(), handle_size, text_mark_height, rail_height);
-    Rectangle {
-        x: bounds.x + frame_rail_bounds.x,
-        y: bounds.y + frame_rail_bounds.y,
-        width: frame_rail_bounds.width,
-        height: frame_rail_bounds.height
-    }
-}
-
 pub fn get_text_and_rail_bounds (
     bounds: Rectangle,
     handle_size: Size,

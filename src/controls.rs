@@ -7,7 +7,7 @@ use crate::speed::{
 
 // most generic iced renderer, used for the Program associated type
 use iced::Renderer;
-use iced::{Element, Color}; 
+use iced::{Element, Color};
 
 use iced_widget::{Row, Text, Checkbox, Column};
 use iced_winit::core::{Alignment, Length};

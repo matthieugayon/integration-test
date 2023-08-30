@@ -11,16 +11,6 @@ pub struct Palette {
 }
 
 impl Palette {
-    pub const LIGHT: Self = Self {
-        background: Color::WHITE,
-        text: Color::BLACK,
-        primary: Color::from_rgb(
-            0x5E as f32 / 255.0,
-            0x7C as f32 / 255.0,
-            0xE2 as f32 / 255.0,
-        )
-    };
-
     pub const DARK: Self = Self {
         background: Color::from_rgb(
             0x20 as f32 / 255.0,
@@ -38,14 +28,12 @@ impl Palette {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Theme {
-    Light,
-    Dark,
+    Dark
 }
 
 impl Theme {
     pub fn palette(self) -> Palette {
         match self {
-            Self::Light => Palette::LIGHT,
             Self::Dark => Palette::DARK,
         }
     }
