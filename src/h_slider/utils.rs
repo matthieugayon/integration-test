@@ -11,16 +11,6 @@ pub enum SliderStatus {
     Unchanged,
 }
 
-impl SliderStatus {
-    pub(crate) fn moved(&mut self) {
-        *self = SliderStatus::Moved;
-    }
-
-    pub(crate) fn was_moved(self) -> bool {
-        matches!(self, SliderStatus::Moved)
-    }
-}
-
 pub fn find_closest(value: f32, candidates: &Vec<f32>) -> (usize, &f32) {
     candidates
         .into_iter()

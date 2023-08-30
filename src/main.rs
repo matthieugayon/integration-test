@@ -1,14 +1,15 @@
-mod controls;
-mod theme;
-mod h_slider;
 mod color_utils;
+mod controls;
+mod h_slider;
 pub mod speed;
+mod theme;
 
 use controls::Controls;
 use theme::Theme;
 
 use iced_wgpu::graphics::Viewport;
-use iced_wgpu::{wgpu, Backend, Renderer, Settings};
+use iced_wgpu::{wgpu, Backend, Settings};
+
 use iced_winit::core::mouse;
 use iced_winit::core::renderer;
 use iced_winit::core::{Color, Size};
@@ -20,7 +21,6 @@ use winit::{
     event::{Event, ModifiersState, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
 };
-
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -40,8 +40,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let default_backend = wgpu::Backends::PRIMARY;
 
-    let backend =
-        wgpu::util::backend_bits_from_env().unwrap_or(default_backend);
+    let backend = wgpu::util::backend_bits_from_env().unwrap_or(default_backend);
 
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
         backends: backend,
@@ -49,44 +48,39 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     let surface = unsafe { instance.create_surface(&window) }?;
 
-    let (format, (device, queue)) =
-        futures::futures::executor::block_on(async {
-            let adapter = wgpu::util::initialize_adapter_from_env_or_default(
-                &instance,
-                backend,
-                Some(&surface),
-            )
-            .await
-            .expect("Create adapter");
+    let (format, (device, queue)) = futures::futures::executor::block_on(async {
+        let adapter =
+            wgpu::util::initialize_adapter_from_env_or_default(&instance, backend, Some(&surface))
+                .await
+                .expect("Create adapter");
 
-            let adapter_features = adapter.features();
+        let adapter_features = adapter.features();
 
-            let needed_limits = wgpu::Limits::default();
+        let needed_limits = wgpu::Limits::default();
 
-            let capabilities = surface.get_capabilities(&adapter);
+        let capabilities = surface.get_capabilities(&adapter);
 
-            (
-                capabilities
-                    .formats
-                    .iter()
-                    .copied()
-                    .find(wgpu::TextureFormat::is_srgb)
-                    .or_else(|| capabilities.formats.first().copied())
-                    .expect("Get preferred format"),
-                adapter
-                    .request_device(
-                        &wgpu::DeviceDescriptor {
-                            label: None,
-                            features: adapter_features
-                                & wgpu::Features::default(),
-                            limits: needed_limits,
-                        },
-                        None,
-                    )
-                    .await
-                    .expect("Request device"),
-            )
-        });
+        (
+            capabilities
+                .formats
+                .iter()
+                .copied()
+                .find(wgpu::TextureFormat::is_srgb)
+                .or_else(|| capabilities.formats.first().copied())
+                .expect("Get preferred format"),
+            adapter
+                .request_device(
+                    &wgpu::DeviceDescriptor {
+                        label: None,
+                        features: adapter_features & wgpu::Features::default(),
+                        limits: needed_limits,
+                    },
+                    None,
+                )
+                .await
+                .expect("Request device"),
+        )
+    });
 
     surface.configure(
         &device,
@@ -108,17 +102,18 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize iced
     let mut debug = Debug::new();
-    let mut renderer = Renderer::new(Backend::new(
-        &device,
-        &queue,
-        Settings::default(),
-        format,
-    ));
+
+    // This is the WGPU renderer
+    let wgpu_renderer =
+        iced_wgpu::Renderer::new(Backend::new(&device, &queue, Settings::default(), format));
+
+    // We wrap the renderer in a type that implements the iced renderer trait
+    let mut renderer = iced_renderer::Renderer::Wgpu(wgpu_renderer);
 
     let mut state = program::State::new(
         controls,
         viewport.logical_size(),
-        &mut renderer,
+        &mut renderer, // good type of renderer now
         &mut debug,
     );
 
@@ -146,11 +141,9 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 // Map window event to iced event
-                if let Some(event) = iced_winit::conversion::window_event(
-                    &event,
-                    window.scale_factor(),
-                    modifiers,
-                ) {
+                if let Some(event) =
+                    iced_winit::conversion::window_event(&event, window.scale_factor(), modifiers)
+                {
                     state.queue_event(event);
                 }
             }
@@ -161,12 +154,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let _ = state.update(
                         viewport.logical_size(),
                         cursor_position
-                            .map(|p| {
-                                conversion::cursor_position(
-                                    p,
-                                    viewport.scale_factor(),
-                                )
-                            })
+                            .map(|p| conversion::cursor_position(p, viewport.scale_factor()))
                             .map(mouse::Cursor::Available)
                             .unwrap_or(mouse::Cursor::Unavailable),
                         &mut renderer,
@@ -209,15 +197,16 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 match surface.get_current_texture() {
                     Ok(frame) => {
-                        let mut encoder = device.create_command_encoder(
-                            &wgpu::CommandEncoderDescriptor { label: None },
-                        );
+                        let mut encoder =
+                            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                label: None,
+                            });
 
                         let program = state.program();
 
-                        let view = frame.texture.create_view(
-                            &wgpu::TextureViewDescriptor::default(),
-                        );
+                        let view = frame
+                            .texture
+                            .create_view(&wgpu::TextureViewDescriptor::default());
 
                         // We clear the frame
                         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -242,30 +231,30 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                             depth_stencil_attachment: None,
                         });
 
-                        // And then iced on top
-                        renderer.with_primitives(|backend, primitive| {
-                            backend.present(
-                                &device,
-                                &queue,
-                                &mut encoder,
-                                None,
-                                &view,
-                                primitive,
-                                &viewport,
-                                &debug.overlay(),
-                            );
-                        });
+                        if let iced_renderer::Renderer::Wgpu(ref mut inner_renderer) = renderer {
+                            // And then iced on top
+                            inner_renderer.with_primitives(|backend, primitive| {
+                                backend.present(
+                                    &device,
+                                    &queue,
+                                    &mut encoder,
+                                    None,
+                                    &view,
+                                    primitive,
+                                    &viewport,
+                                    &debug.overlay(),
+                                );
+                            });
+                        }
 
                         // Then we submit the work
                         queue.submit(Some(encoder.finish()));
                         frame.present();
 
                         // Update the mouse cursor
-                        window.set_cursor_icon(
-                            iced_winit::conversion::mouse_interaction(
-                                state.mouse_interaction(),
-                            ),
-                        );
+                        window.set_cursor_icon(iced_winit::conversion::mouse_interaction(
+                            state.mouse_interaction(),
+                        ));
                     }
                     Err(error) => match error {
                         wgpu::SurfaceError::OutOfMemory => {

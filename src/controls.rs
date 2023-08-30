@@ -5,11 +5,13 @@ use crate::speed::{
     DEFAULT_QUANTIZED_SPEED_INDEX, QUANTIZED_SPEEDS
 };
 
+// most generic iced renderer, used for the Program associated type
+use iced::Renderer;
 use iced::{Element, Color};
+
 use iced_widget::{Row, Text, Checkbox, Column};
 use iced_winit::core::{Alignment, Length};
 use iced_winit::runtime::{Program, Command};
-use iced_wgpu::Renderer;
 use lazy_static::lazy_static;
 
 pub struct Controls {
@@ -94,44 +96,35 @@ impl Program for Controls {
             |val| Message::SetSpeedMode(if val { SpeedMode::Quantized } else { SpeedMode::Unquantized })
         );
 
-        // Column::new()
-        //     .push(
-        //         Row::new()
-        //         .spacing(16)
-        //         .push(quantize_btn)
-        //         .push(
-        //             HSlider::new(
-        //                 speed_normal,
-        //                 move |normal, index| get_message(normal, index),
-        //             )
-        //             .snap_to_normals(snappable_option)
-        //             .markers(Some(MARKERS.as_slice()))
-        //             .height(Length::Fixed(40.))
-        //             .width(Length::Fixed(500.))
-        //         )
-        //         .push(
-        //             Text::new(display_value)
-        //                 .size(14)
-        //                 .width(Length::Fixed(30.))
-        //                 .horizontal_alignment(iced::alignment::Horizontal::Center)
-        //         )
-        //         .align_items(Alignment::Center)
-        //         .width(Length::Shrink)
-        //         .height(Length::Fill)
-        //     )
-        //         .height(Length::Fill)
-        //         .width(Length::Fill)
-        //         .align_items(Alignment::Center)
-        //         .into()
-
-        HSlider::new(
-            speed_normal,
-            move |normal, index| get_message(normal, index),
-        )
-        .snap_to_normals(snappable_option)
-        .markers(Some(MARKERS.as_slice()))
-        .height(Length::Fixed(40.))
-        .width(Length::Fixed(500.)).into()
+        Column::new()
+            .push(
+                Row::new()
+                .spacing(16)
+                .push(quantize_btn)
+                .push(
+                    HSlider::new(
+                        speed_normal,
+                        move |normal, index| get_message(normal, index),
+                    )
+                    .snap_to_normals(snappable_option)
+                    .markers(Some(MARKERS.as_slice()))
+                    .height(Length::Fixed(40.))
+                    .width(Length::Fixed(500.))
+                )
+                .push(
+                    Text::new(display_value)
+                        .size(14)
+                        .width(Length::Fixed(30.))
+                        .horizontal_alignment(iced::alignment::Horizontal::Center)
+                )
+                .align_items(Alignment::Center)
+                .width(Length::Shrink)
+                .height(Length::Fill)
+            )
+                .height(Length::Fill)
+                .width(Length::Fill)
+                .align_items(Alignment::Center)
+                .into()
     }
 }
 
