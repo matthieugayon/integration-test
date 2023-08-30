@@ -1,4 +1,3 @@
-use iced::application;
 use iced_core::{Color, Size, Font, Background, BorderRadius};
 use crate::h_slider::style::{StyleSheet, Appearance};
 use crate::color_utils::{darken, lighten};

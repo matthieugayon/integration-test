@@ -10,9 +10,6 @@ use theme::Theme;
 use iced_wgpu::graphics::Viewport;
 use iced_wgpu::{wgpu, Backend, Settings};
 
-// (this is mandatory for iced_wgpu integration)
-use iced_wgpu::Renderer as WgpuRenderer;
-
 use iced_winit::core::mouse;
 use iced_winit::core::renderer;
 use iced_winit::core::{Color, Size};
@@ -105,15 +102,18 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize iced
     let mut debug = Debug::new();
-    let mut renderer =
-        WgpuRenderer::new(Backend::new(&device, &queue, Settings::default(), format));
 
+    // This is the WGPU renderer
+    let renderer =
+        iced_wgpu::Renderer::new(Backend::new(&device, &queue, Settings::default(), format));
+
+    // We wrap the renderer in a type that implements the iced renderer trait
     let mut rd = iced_renderer::Renderer::Wgpu(renderer);
 
     let mut state = program::State::new(
         controls,
         viewport.logical_size(),
-        &mut rd, // wrong type of renderer here
+        &mut rd, // good type of renderer now
         &mut debug,
     );
 
