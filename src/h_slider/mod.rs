@@ -18,7 +18,10 @@ use iced_core::{
     Clipboard, Element, Event, Layout, Length, Point, Rectangle, Shell, Size,
     Renderer as _,
 };
+
+// most generic iced renderer
 use iced::Renderer;
+
 use iced_widget::canvas::{self, Frame, Cache};
 use iced::advanced::{
     renderer,

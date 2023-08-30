@@ -5,7 +5,10 @@ use crate::speed::{
     DEFAULT_QUANTIZED_SPEED_INDEX, QUANTIZED_SPEEDS
 };
 
-use iced::{Element, Color, Renderer};
+// most generic iced renderer, used for the Program associated type
+use iced::Renderer;
+use iced::{Element, Color}; 
+
 use iced_widget::{Row, Text, Checkbox, Column};
 use iced_winit::core::{Alignment, Length};
 use iced_winit::runtime::{Program, Command};
