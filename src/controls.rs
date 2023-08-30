@@ -5,11 +5,10 @@ use crate::speed::{
     DEFAULT_QUANTIZED_SPEED_INDEX, QUANTIZED_SPEEDS
 };
 
-use iced::{Element, Color};
+use iced::{Element, Color, Renderer};
 use iced_widget::{Row, Text, Checkbox, Column};
 use iced_winit::core::{Alignment, Length};
 use iced_winit::runtime::{Program, Command};
-use iced_wgpu::Renderer;
 use lazy_static::lazy_static;
 
 pub struct Controls {
@@ -88,11 +87,11 @@ impl Program for Controls {
             SpeedMode::Unquantized => None,
         };
 
-        let quantize_btn = Checkbox::new(
-            "Quantised",
-            self.speed_mode == SpeedMode::Quantized,
-            |val| Message::SetSpeedMode(if val { SpeedMode::Quantized } else { SpeedMode::Unquantized })
-        );
+        // let quantize_btn = Checkbox::new(
+        //     "Quantised",
+        //     self.speed_mode == SpeedMode::Quantized,
+        //     |val| Message::SetSpeedMode(if val { SpeedMode::Quantized } else { SpeedMode::Unquantized })
+        // );
 
         // Column::new()
         //     .push(
